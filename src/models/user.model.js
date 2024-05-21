@@ -1,9 +1,14 @@
+import dotenv from 'dotenv';
+
 import mongoose from "mongoose";
 import { Schema } from "mongoose";
 import jwt from "jsonwebtoken";
+
 //SON Web Tokens (JWTs) are a standardized way to securely send data between two parties. They contain information (claims) encoded in the JSON format
 
-import bcrypt from "bcrypt"; //this help to encrpyt the password
+import bcrypt from "bcrypt";
+dotenv.config();
+ //this help to encrpyt the password
 
 const userSchema = new Schema(
   {
@@ -66,6 +71,7 @@ userSchema.methods.isPasswordCorrect = async function (password) {
   return await bcrypt.compare(password, this.password); //this is custom method that help to check the password is true or not this method return the value in boolean
 };
 userSchema.methods.generateAccessToken = function () {
+  console.log("acesstoeney", process.env.ACCESS_TOKEN_SECRET, )
   return jwt.sign(
     {
       _id: this.id,
@@ -73,20 +79,22 @@ userSchema.methods.generateAccessToken = function () {
       userName: this.userName,
       fullname: this.fullname,
     },
-    process.env.ACCESS_TOKEN_SECRET,
+    'qwertyuioplkjhgfdsazxcvbnm',
     {
-      expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
+      expiresIn: '15m',
     }
   );
 };
+
 userSchema.methods.generateRefreshToken = function () {
+  console.log( process.env.REFESH_TOKEN_SECRET)
   return jwt.sign(
     {
       _id: this.id,
     },
-    process.env.REFESH_TOKEN_SECRET,
+    'qwertyuioplkjhgfdsazxcvbnm' ,
     {
-      expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
+      expiresIn: '15m',
     }
   );
 };

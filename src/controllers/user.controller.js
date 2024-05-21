@@ -3,21 +3,30 @@ import {ApiError} from "../utiles/Apierror.js"
 import {User} from "../models/user.model.js"
 import {uploadOnCloudinary }from "../utiles/cloudinary.js"
 import { ApiResponse } from "../utiles/Apiresponse.js";
- const generateAccessAndRefreshToken = async(userId)=>{
+import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+dotenv.config();
+
+const generateAccessAndRefereshTokens = async(userId) =>{
   try {
-       const user  = await User.findById(userId)  ;
-       const refreshToken = user.generateRefreshToken();
-       const accessToken = user.generateAccessToken();
-       user.refreshToken = refreshToken;
-        user.save ({validateBeforeSave:false});
-        return {refreshToken, accessToken}
-  } 
-  catch (error) {
+      const user = await User.findById(userId)
+      // console.log( "jdhfj" user.generateAccessToken());
+      const accessToken = await user.generateAccessToken()
+      const refreshToken = await user.generateRefreshToken()
+      console.log("acess" , accessToken);
+
+      user.refreshToken = refreshToken
+      await user.save({ validateBeforeSave: false  })
+
+      return {accessToken, refreshToken}
+
+
+  } catch (error) {
     console.log(error)
-    throw new ApiError(500 , " something went wrong while genrating access token and refresh token");
-    
+      // throw new ApiError(500, "Something went wrong while generating referesh and access token")
   }
- }
+}
 
 const registerUser = asyncHandler(async (req, res) => {
    // res.status(200).json({
@@ -93,11 +102,11 @@ const registerUser = asyncHandler(async (req, res) => {
  
    return res
      .status(201)
-     .json(new ApiResponse(200, createdUser, "User registered Successfully"));
+     .json(new ApiResponse(200,  "User registered Successfully",createdUser));
  })
  const loginUser = asyncHandler(async(req,res)=>{
     const{userName,email,password} = req.body;
-    if(!userName || !email){
+    if(!userName && !email){
        throw new ApiError(400 , "username or email is required");
     }
     const user =  await User .findOne({
@@ -111,15 +120,111 @@ const registerUser = asyncHandler(async (req, res) => {
     if (!isPasswordvalid){
          throw new ApiError(401, "user credential incorrect")
     }
-    const { accessToken , refreshToken } = await generateAccessAndRefreshToken(user._id);
-    const loggedInUser = User.findById(user._id).select("-password -refreshToken");
+    console.log(user._id);
+    const { accessToken , refreshToken } = await generateAccessAndRefereshTokens(user._id);
+    console.log("yess");
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
      // send cookies
-
+   console.log(loggedInUser);
      const options = {
       httpOnly :true,
       secure :true
      }
+      return res.status(200)
+      .cookie("accessToken" , accessToken,options)
+      .cookie("refreshToken", refreshToken,options)
+      .json(new ApiResponse(200,"user logged in succesfully ", loggedInUser))
+    
+ })
+ const logoutUser = asyncHandler(async(req,res)=>{
+  await User.findByIdAndUpdate(req.user._id,{
+    $set:{
+       refreshToken:undefined
+    }
+  },
+  {
+    new:true
+  }
+)
+const options = {
+  httpOnly :true,
+  secure :true
+ }
+  res.status(200)
+  .clearCookie("refreshToken",options)
+  .clearCookie("accessToken",options)
+  .json( new ApiError(200 , {} , "user logout"))
 
  })
+ const refreshAccessToken = asyncHandler(async(req,res)=>{
+    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
+  console.log("dufh");
+    if (!incomingRefreshToken){
+      console.log("errorfh");
+      throw new ApiError(401 , "user unauthorized accesss")
+    }
+    const decodedToken = jwt.verify(incomingRefreshToken , "jkdsgggwbuiveruilurbyuieytbuivhggecvebguiycubiyeurnhgfjhbgjchfg" )
+    const user = await User.findById(decodedToken._id);
+    if (!user){
+      throw new ApiError(401 , "unauthorized access")
+    }
+    if (incomingRefreshToken!== user?.refreshToken){
+     throw new ApiError(401 , "invalid refresh token")
+    }
+    const options ={
+      httpOnly:true,
+      secure:true
+    }
+  const {accessToken , newrefreshToken} =  await  generateAccessAndRefereshTokens(user._id)
+   return res.status(200)
+   .cookie("accessToken" , accessToken,options)
+   .cookie("refreshToken", newrefreshToken,options)
+   .json(new ApiResponse(200,"user refresh access token succesfully ", user ))
+ })
+ const changePassword = asyncHandler(async(req,res)=>{
+  const {oldPassword , newPassword} = req.body;
+   const user = await User.findById(req.user?._id);
+   const isPasswordvalid =  await user.isPasswordCorrect(oldPassword);
+   if (!isPasswordvalid){
+    throw new ApiError(400 ,"invalid detail or oldpassword");
+   } 
+   user.password = newPassword;
+   await user.save({validateBeforeSave:false});
+    return res.status(200).json(new ApiResponse(200 , "password change successfullt" ));
+ })
+ const getCurrentUser = asyncHandler(async(req,res)=>{
+   return res .status(200).json(new ApiResponse(200, "current user fetch suucessfully" , req.user))
+ })
+ const changeUserDetail = asyncHandler(async(req,res)=>{
+   const {fullname , email } = req.body ;
+   if (!fullname || !email){
+    throw new ApiError(400 , "all feild are reqiure");
+   }
+   const user = await User.findByIdAndUpdate(req.user?._id ,{
+    $set:{
+      fullname , email 
+    }
+   },{
+      new:true
+   }).select("-password");
+   return res.status(200).json(new ApiResponse(200, "changes success" , user));
+ })
+ const changeUserAvatar = asyncHandler(async(req,res)=>{
+  const avatarLocalPath = req.file?.avatar;
+  if (!avatarLocalPath){
+    throw new ApiError(404 , "avatarlocalpath not found");
+  }
+    const avatar = await  uploadOnCloudinary(avatarLocalPath);
+    if (!avatar?.url){
+      throw new ApiError(404 ,"url not found");
+    }
+    const user = await User.findByIdAndUpdate(req.user?._id ,{
+      $set:{
+         avatar:avatar.url
+      }
+    },{new:true}).select("-password");
+    
+     return res.status(200).json(new ApiResponse(200 , "avatar change succesfully",user));
+ })
 
-export {registerUser,loginUser}
+export {registerUser,loginUser,logoutUser,refreshAccessToken,changePassword,getCurrentUser,changeUserDetail,changeUserAvatar }
