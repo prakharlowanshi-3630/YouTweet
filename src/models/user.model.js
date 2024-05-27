@@ -41,12 +41,12 @@ const userSchema = new Schema(
     coverImage: {
       type: String,
     },
-    // watchHistory: [
-    //   {
-    //     type: Schema.Types.ObjectId,
-    //     ref: "Vedio",
-    //   },
-    // ],
+    watchHistory: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Vedio",
+      },
+    ],
     password: {
       type: String,
       required: [true, "Password is Requireed"],

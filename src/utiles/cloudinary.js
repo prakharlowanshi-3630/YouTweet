@@ -1,6 +1,7 @@
 import {v2 as cloudinary} from "cloudinary"
 import fs from "fs"
 import dotenv from "dotenv";
+import { response } from "express";
 dotenv.config();
 
 cloudinary.config({ 
@@ -10,7 +11,7 @@ cloudinary.config({
 });
 
 const uploadOnCloudinary = async (localFilePath) => {
-  console.log(process.env.CLOUDINARY_API_KEY);
+ 
     try {
         if (!localFilePath) return null
         //upload the file on cloudinary
@@ -23,15 +24,31 @@ const uploadOnCloudinary = async (localFilePath) => {
         return response;
 
     } catch (error) {
-      console.log("heelo")
-    //   const response = await cloudinary.uploader.upload(localFilePath, {
-    //     resource_type: "auto"
-    // })
+     
+         console.log(error);
         fs.unlinkSync(localFilePath) // remove the locally saved temporary file as the upload operation got failed
-        return response;
+        
     }
+}
+const removeFromCloudinary = async(filePath)=>{
+  try {
+      if (!filePath){
+        return null;
+      
+      }
+      const urlArray = filePath.split('/');
+      const image =  urlArray[urlArray.length -1];
+      const imageName = image.split('.')[0];
+      console.log("image name",imageName);
+
+      const res = await cloudinary.uploader.destroy(imageName,{resource_type:'image'});
+      console.log("image removed successfully");
+      return response;
+  } catch (error) {
+    console.log(error);
+  }
 }
 
 
 
-export {uploadOnCloudinary}
+export {uploadOnCloudinary,removeFromCloudinary}
