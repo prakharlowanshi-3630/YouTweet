@@ -3,7 +3,7 @@ import { changePassword, changeUserAvatar, changeUserDetail, getCurrentUser, get
 import{upload} from "../middleware/multer.middleware.js"
 import { verifyJWT } from "../middleware/auth.controller.js";
 const userRouter = Router();
-
+console.log("hiiii")
 userRouter.route("/register").post(
   upload.fields([
     //this upload come from multer

@@ -57,7 +57,9 @@ const registerUser = asyncHandler(async (req, res) => {
      //this method find the first value of the userName or email for the database return it
      $or: [{ userName }, { email }],
    });
- 
+
+   
+   
    if (existedUser) {
      throw new ApiError(409, "User already exist");
    }

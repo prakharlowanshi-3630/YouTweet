@@ -17,7 +17,10 @@ app.use(express.static("public/temp"))
 // secure cookies ko user k browser ma rakh sakte ho or vo sirf server he read kar sakta ha
 app.use(cookieParser())
 import userRouter from "./routes/user.router.js"
+import videoRouter from "./routes/video.router.js";
 app.use("/api/v1/user",userRouter)
-// const avatar = await uploadOnCloudinary('public\\temp\\79.jpg');
+app.use("/api/v1/video" , videoRouter)
+
+
 
  export {app}
